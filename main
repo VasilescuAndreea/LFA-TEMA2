@@ -3,16 +3,16 @@
 def Read():
     number_of_states = int(f.readline())   #numar de stari
     number_of_chars = int(f.readline())    #numarul de litere din alfabet
-    c = f.readline().split()
-    init = int(f.readline())
-    nrfin = int(f.readline())
-    fin = [int(x) for x in f.readline().split()]
-    l = int(f.readline())
+    c = f.readline().split()               #alfabetul
+    initial_state = int(f.readline())               #starea initiala
+    number_of_final_state = int(f.readline())              #numarul starilor finale
+    final_state = [int(x) for x in f.readline().split()]       #starile finale
+    l = int(f.readline())   #tranzitiile
     L = []
     for i in range(l):
         lin = f.readline().split()
         L.append((int(lin[0]), lin[1], int(lin[2])))
-    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+    return number_of_states, number_of_chars, c, initial_state, number_of_final_state, final_state, L
 
 import copy
 
@@ -69,14 +69,14 @@ def nfa_to_dfa(A):
     number_of_states = A[0]    #Numarul de stari
     number_of_chars = A[1]    #Numarul de litere ale alfabetului
     c = A[2]    #Alfabetul
-    init = A[3] #Starea initiala
-    nrfin = A[4] #Numarul de star finale
-    fin = A[5]  #Multimea starilor finale
+    initial_state = A[3] #Starea initiala
+    number_of_final_state = A[4] #Numarul de star finale
+    final_stateal_state = A[5]  #Multimea starilor finale
     L = A[6]    #Tranzitiile
 
     M = Matrice(L, number_of_states)
 
-    q = [{init}]    #
+    q = [{initial_state}]    #
     tranz = []
 
     #ELIMINAM NEDETERMINISMUL ( aflu starile ( compuse ) in care pot sa ajung cu fiecare caracter)
@@ -104,14 +104,14 @@ def nfa_to_dfa(A):
 
     #Actualizez noile stari finale
     newfin = []
-    for i in fin:
+    for i in final_stateal_state:
         for j in range(number_of_states):
             if i in q[j] and j not in newfin:
                 newfin.append(j)
-    fin = copy.deepcopy(newfin)
-    nrfin = len(fin)
+    final_state = copy.deepcopy(newfin)
+    number_of_final_state = len(final_state)
 
-    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+    return number_of_states, number_of_chars, c, initial_state, number_of_final_state, final_stateal_state, L
 
 
 #LAMBDA NFA TO DFA
@@ -119,9 +119,9 @@ def lnfa_to_nfa(A):
     number_of_states = A[0]    #numarul de stari
     number_of_chars = A[1]    #numarul de litere din alfabet
     c = A[2]    #alfabetul
-    init = A[3] #starea initiala
-    nrfin = A[4]  #numarul de stari finale
-    fin = A[5]  #starile finale
+    initial_state = A[3] #starea initiala
+    number_of_final_state = A[4]  #numarul de stari finale
+    final_stateal_state = A[5]  #starile finale
     L = A[6]    #tranzitiile
 
     #FORMEZ MATRICEA LAMBDA-NFA
@@ -150,12 +150,12 @@ def lnfa_to_nfa(A):
 
     #Vor rezulta noi stari finale
     for i in range(number_of_states):
-        if i not in fin:
-            for x in fin:
+        if i not in final_stateal_state:
+            for x in final_stateal_state:
                 if x in LC[i]:
-                    fin.append(i)
+                    final_stateal_state.append(i)
                     break
-    nrfin = len(fin)
+    number_of_final_state = len(final_stateal_state)
 
     #PASUL 4: ELIMINAREA STARILOR REDUNDANTE
 
@@ -165,7 +165,7 @@ def lnfa_to_nfa(A):
     for i in range(number_of_states):
         for j in range(i + 1, number_of_states):
             if i not in red and j not in red:
-                if (i in fin and j in fin) or (i not in fin and j not in fin):
+                if (i in final_stateal_state and j in final_stateal_state) or (i not in final_stateal_state and j not in final_stateal_state):
                     for k in range(number_of_chars):
                         if TrC[k][i] != TrC[k][j]:
                             break
@@ -184,9 +184,9 @@ def lnfa_to_nfa(A):
                 else:
                     k = k + 1
                 j = j + 1
-        for i in fin:
+        for i in final_stateal_state:
             if i in red:
-                fin.remove(i)
+                final_stateal_state.remove(i)
 
     #Refac tranzitiile prin inlocuirea starilor redundante
         for i in range(number_of_chars):
@@ -212,11 +212,11 @@ def lnfa_to_nfa(A):
                         if i in TrC[x][y]:
                             TrC[x][y].remove(i)
                             TrC[x][y].add(i - j)
-                if i in fin:
-                    fin.remove(i)
-                    fin.append(i - j)
+                if i in final_stateal_state:
+                    final_stateal_state.remove(i)
+                    final_stateal_state.append(i - j)
             i = i + 1
-        nrfin = len(fin)
+        number_of_final_state = len(final_stateal_state)
 
         number_of_states = number_of_states - len(red)
 
@@ -227,22 +227,22 @@ def lnfa_to_nfa(A):
             for x in TrC[i][j]:
                 L.append((j, c[i], x))
 
-    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+    return number_of_states, number_of_chars, c, initial_state, number_of_final_state, final_stateal_state, L
 
 #CONVERSIE DE LA DFA LA DFAmin
 def dfa_to_dfamin(A):
     number_of_states = A[0]    #numarul de stari
     number_of_chars = A[1]    #numarul de litere
     c = A[2]    #alfabetul
-    init = A[3] #starea initiala
-    nrfin = A[4]#nr de stari finale
-    fin = A[5]#multimea de stari finale
+    initial_state = A[3] #starea initiala
+    number_of_final_state = A[4]#nr de stari final_stateale
+    final_state = A[5]#multimea de stari final_stateale
     L = A[6]#tranzitiile
 
     M = Matrice(L, number_of_states)
 
     #In cazul in care automatul NU e complet
-    #Construiesc automatul complet care e definit echivalent
+    #Construiesc automatul complet care e definal_stateit echivalent
     complet = 1
     for i in range(number_of_states):
         for ch in c:
@@ -257,12 +257,12 @@ def dfa_to_dfamin(A):
 
     #Toata matricea mea o sa fie Adevarata la inceput
     #Si pe parcurs o sa devina False perechiile i,j
-    #in cazul in care una dintre ele este stare finala, dar cealalta nu e
+    #in cazul in care una dintre ele este stare final_stateala, dar cealalta nu e
     T = [[True] * (i) for i in range(number_of_states)]
 
     for i in range(1, number_of_states):
         for j in range(i):
-            if (i in fin and j not in fin) or (i not in fin and j in fin):
+            if (i in final_state and j not in final_state) or (i not in final_state and j in final_state):
                 T[i][j] = False
 
     #PASUL 1.1.3 Marchez cu False toate starile care
@@ -320,16 +320,16 @@ def dfa_to_dfamin(A):
     #Se actualizeaza starile initiale
     for x in eq:
         for y in x:
-            if y == init:
-                init = eq.index(x)
+            if y == initial_state:
+                initial_state = eq.index(x)
 
-    #Se actualizeaza si starile finale
-    newfin = []
+    #Se actualizeaza si starile final_stateale
+    newfinal_state = []
     for x in eq:
-        if list(x)[0] in fin:
-            newfin.append(eq.index(x))
-    fin = copy.deepcopy(newfin)
-    nrfin = len(fin)
+        if list(x)[0] in final_state:
+            newfinal_state.append(eq.index(x))
+    final_state = copy.deepcopy(newfinal_state)
+    number_of_final_stateal_state = len(final_state)
 
     #In urma actualizarilor, s a modificat numarul starilor
     #Astfel ca trebuie sa actualizez si numarul de stari
@@ -358,18 +358,18 @@ def dfa_to_dfamin(A):
                         viz[j] = 1
         vectorviz.append(viz)
 
-    #O stare este dead-end daca din ea nu se poate ajunge intr o stare finala
+    #O stare este dead-end daca din ea nu se poate ajunge intr o stare final_stateala
     #In acest punct ma intereseaza sa aflu care sunt aceste stari dead-end
     elim = []
     for x in vectorviz:
-        for i in fin:
+        for i in final_state:
             if x[i] == 1:
                 break
         else:
             elim.append(vectorviz.index(x))
 
     #Plecand dintr o stare initiala, ma intereseaza in ce stare pot ajunge
-    s = init
+    s = initial_state
     viz = [0] * number_of_states
     q = []
     q.append(s)
@@ -414,24 +414,24 @@ def dfa_to_dfamin(A):
                         x[0] = i - j
                     if x[2] == i:
                         x[2] = i - j
-                if i in fin:
-                    fin.remove(i)
-                    fin.append(i - j)
+                if i in final_state:
+                    final_state.remove(i)
+                    final_state.append(i - j)
             i = i + 1
         number_of_states = number_of_states - len(elim)
 
-    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+    return number_of_states, number_of_chars, c, initial_state, number_of_final_stateal_state, final_state, L
 
 
 
-def afis(A):
-    print("Numarul de stari este:", A[0])
-    print("In alfabet sunt", A[1], "litere")
-    print("Alfabetul:", A[2])
-    print("Starea initiala:", A[3])
-    print("Sunt", A[4], "stari finale")
-    print("Multimea de stari finale este", A[5])
-    print("Tranzitiile:")
+def afisare(A):
+    print("NUMARUL STARILOR:", A[0])
+    print("IN ALFABET SUNT", A[1], "LITERE")
+    print("ALFABETUL:", A[2])
+    print("STAREA INITIALA:", A[3])
+    print("SUNT", A[4], "STARI final_stateALE")
+    print("MULTIMEA DE STARI final_stateALE:", A[5])
+    print("TRANZITIILE:")
     for x in A[6]:
         print(x)
     print()
@@ -442,13 +442,13 @@ B = Read()
 C = Read()
 print("CONVERSIE LAMBDA-NFA LA NFA")
 A = lnfa_to_nfa(A)
-afis(A)
+afisare(A)
 
 print("CONVERSIE NFA LA DFA")
 B = nfa_to_dfa(B)
-afis(B)
+afisare(B)
 
 print("CONVERSIE DFA LA DFA MIN")
 C = dfa_to_dfamin(C)
-afis(C)
+afisare(C)
 f.close()

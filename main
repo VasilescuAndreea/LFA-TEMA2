@@ -1,0 +1,454 @@
+
+#Citirea datelor
+def Read():
+    number_of_states = int(f.readline())   #numar de stari
+    number_of_chars = int(f.readline())    #numarul de litere din alfabet
+    c = f.readline().split()
+    init = int(f.readline())
+    nrfin = int(f.readline())
+    fin = [int(x) for x in f.readline().split()]
+    l = int(f.readline())
+    L = []
+    for i in range(l):
+        lin = f.readline().split()
+        L.append((int(lin[0]), lin[1], int(lin[2])))
+    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+
+import copy
+
+#CREEZ O MATRICE PE BAZA UEI LISTE
+def Matrice(L, number_of_states):
+    M = [[0] * number_of_states for i in range(number_of_states)]
+    for i in L:
+        if M[i[0]][i[2]] == 0:
+            M[i[0]][i[2]] = i[1]
+        else:
+            if isinstance(M[i[0]][i[2]], list) == False:
+                M[i[0]][i[2]] = [M[i[0]][i[2]]]
+            M[i[0]][i[2]].append(i[1])
+    return M
+
+#Functia care returneaza multimea de stari in care NU putem ajunge
+#din multimea de stari v cu caracterul ch
+def multime_tr_caract(M, v, ch, number_of_states):
+    mult = set()
+    for i in v:
+        for j in range(number_of_states):
+            if isinstance(M[i][j], list) == False:
+                if M[i][j] == ch:
+                    mult.add(j)
+            elif ch in M[i][j]:
+                mult.add(j)
+    return mult
+
+#PASUL 1.1 CALCULAM LABDA INCHIDEREA
+#multimea de stari in care se poate ajunge plecand din q cu 0
+#sau mai multe tranzitii de tip p
+
+#ma folosesc de matricea creata mai sus
+
+def Lambdainchidere(M, number_of_states):
+    LC = [set() for i in range(number_of_states)]
+    for i in range(number_of_states):
+        LC[i].add(i)
+        LC[i] = LC[i] | (multime_tr_caract(M, [i], '$', number_of_states))
+    ok = False
+    while ok == 0:
+        ok = True
+        for i in range(number_of_states):
+            ex = LC[i]
+            for j in LC[i]:
+                LC[i] = LC[i] | LC[j]
+            if ex != LC[i]:
+                ok = False
+    return LC
+
+#NFA TO DFA
+
+def nfa_to_dfa(A):
+    number_of_states = A[0]    #Numarul de stari
+    number_of_chars = A[1]    #Numarul de litere ale alfabetului
+    c = A[2]    #Alfabetul
+    init = A[3] #Starea initiala
+    nrfin = A[4] #Numarul de star finale
+    fin = A[5]  #Multimea starilor finale
+    L = A[6]    #Tranzitiile
+
+    M = Matrice(L, number_of_states)
+
+    q = [{init}]    #
+    tranz = []
+
+    #ELIMINAM NEDETERMINISMUL ( aflu starile ( compuse ) in care pot sa ajung cu fiecare caracter)
+    for x in q:
+        for ch in c:
+            y = multime_tr_caract(M, x, ch, number_of_states)
+            if y != set():
+                tranz.append([x, ch, y])
+            if y not in q and y != set():
+                q.append(y)
+
+    number_of_states = len(q)
+
+    #Pentru ca am eliminat nedeterminismul, numarul starilor s a schimbat
+    #Numerotez iar starile de la 0 la n( n fiind noul numar de stari )
+    for i in range(number_of_states):
+        for j in range(len(tranz)):
+            if tranz[j][0] == q[i]:
+                tranz[j][0] = i
+            if tranz[j][2] == q[i]:
+                tranz[j][2] = i
+    for i in range(len(tranz)):
+        tranz[i] = (tranz[i][0], tranz[i][1], tranz[i][2])
+    L = copy.deepcopy(tranz)
+
+    #Actualizez noile stari finale
+    newfin = []
+    for i in fin:
+        for j in range(number_of_states):
+            if i in q[j] and j not in newfin:
+                newfin.append(j)
+    fin = copy.deepcopy(newfin)
+    nrfin = len(fin)
+
+    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+
+
+#LAMBDA NFA TO DFA
+def lnfa_to_nfa(A):
+    number_of_states = A[0]    #numarul de stari
+    number_of_chars = A[1]    #numarul de litere din alfabet
+    c = A[2]    #alfabetul
+    init = A[3] #starea initiala
+    nrfin = A[4]  #numarul de stari finale
+    fin = A[5]  #starile finale
+    L = A[6]    #tranzitiile
+
+    #FORMEZ MATRICEA LAMBDA-NFA
+    M = Matrice(L, number_of_states)
+
+    #Determin lambda inchiderea
+    LC = Lambdainchidere(M, number_of_states)
+
+    #caut multimea starilor in care pot sa merg din fiecare multime de stari a
+    #lambda inchiderii
+    #pe baza fiecarui caracter al alfabetului meu
+
+    TrC = [[] for i in range(number_of_chars)]
+    for i in range(number_of_chars):
+        for x in LC:
+            TrC[i].append(multime_tr_caract(M, x, c[i], number_of_states))
+
+    #1.1 obtin D* in urma reuniunii fiecarei multimilor din lambda inchidere
+    #cu fiecare stare corespunzatoare din multime
+    for i in range(number_of_chars):
+        for j in range(number_of_states):
+            x = set()
+            for k in TrC[i][j]:
+                x = x | LC[k]
+            TrC[i][j] = x
+
+    #Vor rezulta noi stari finale
+    for i in range(number_of_states):
+        if i not in fin:
+            for x in fin:
+                if x in LC[i]:
+                    fin.append(i)
+                    break
+    nrfin = len(fin)
+
+    #PASUL 4: ELIMINAREA STARILOR REDUNDANTE
+
+    #Aflu care sunt starile de care nu mai am nevoie
+    red = []
+    redper = []
+    for i in range(number_of_states):
+        for j in range(i + 1, number_of_states):
+            if i not in red and j not in red:
+                if (i in fin and j in fin) or (i not in fin and j not in fin):
+                    for k in range(number_of_chars):
+                        if TrC[k][i] != TrC[k][j]:
+                            break
+                    else:
+                        redper.append((i, j))
+                        red.append(j)
+
+    #Elimin starile redundante
+    if len(red) != 0:
+        for i in range(number_of_chars):
+            j = 0
+            k = 0
+            while j < number_of_states:
+                if j in red:
+                    TrC[i].pop(k)
+                else:
+                    k = k + 1
+                j = j + 1
+        for i in fin:
+            if i in red:
+                fin.remove(i)
+
+    #Refac tranzitiile prin inlocuirea starilor redundante
+        for i in range(number_of_chars):
+            for j in range(number_of_states - len(red)):
+                for x in redper:
+                    if x[1] in TrC[i][j]:
+                        TrC[i][j].remove(x[1])
+                        if x[0] not in TrC[i][j]:
+                            TrC[i][j].add(x[0])
+
+    #In urma eliminarii starilor redundante, numarul starilor se schimba
+    #O sa numerotez iar starile de la 0 la cate sunt
+        i = 0
+        j = 0
+        g = 0
+        while i < number_of_states:
+            if i in red:
+                j = j + 1
+                g = 1
+            if g == 1 and i not in red:
+                for x in range(number_of_chars):
+                    for y in range(number_of_states - len(red)):
+                        if i in TrC[x][y]:
+                            TrC[x][y].remove(i)
+                            TrC[x][y].add(i - j)
+                if i in fin:
+                    fin.remove(i)
+                    fin.append(i - j)
+            i = i + 1
+        nrfin = len(fin)
+
+        number_of_states = number_of_states - len(red)
+
+    #Creez o lista noua cu tranzitii
+    L = []
+    for i in range(number_of_chars):
+        for j in range(number_of_states):
+            for x in TrC[i][j]:
+                L.append((j, c[i], x))
+
+    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+
+#CONVERSIE DE LA DFA LA DFAmin
+def dfa_to_dfamin(A):
+    number_of_states = A[0]    #numarul de stari
+    number_of_chars = A[1]    #numarul de litere
+    c = A[2]    #alfabetul
+    init = A[3] #starea initiala
+    nrfin = A[4]#nr de stari finale
+    fin = A[5]#multimea de stari finale
+    L = A[6]#tranzitiile
+
+    M = Matrice(L, number_of_states)
+
+    #In cazul in care automatul NU e complet
+    #Construiesc automatul complet care e definit echivalent
+    complet = 1
+    for i in range(number_of_states):
+        for ch in c:
+            if multime_tr_caract(M, [i], ch, number_of_states) == set():
+                complet = 0
+                L.append((i, ch, number_of_states))
+    if complet == 0:
+        for ch in c:
+            L.append((number_of_states, ch, number_of_states))
+        number_of_states = number_of_states + 1
+        M = Matrice(L, number_of_states)
+
+    #Toata matricea mea o sa fie Adevarata la inceput
+    #Si pe parcurs o sa devina False perechiile i,j
+    #in cazul in care una dintre ele este stare finala, dar cealalta nu e
+    T = [[True] * (i) for i in range(number_of_states)]
+
+    for i in range(1, number_of_states):
+        for j in range(i):
+            if (i in fin and j not in fin) or (i not in fin and j in fin):
+                T[i][j] = False
+
+    #PASUL 1.1.3 Marchez cu False toate starile care
+                                #sunt separabile prin minim un caracter
+    new = 1
+    while new == 1:
+        new = 0
+        for i in range(1, number_of_states):
+            for j in range(i):
+                if T[i][j] == True:
+                    s = []
+                    for ch in c:
+                        x = list(multime_tr_caract(M, [i], ch, number_of_states))
+                        y = list(multime_tr_caract(M, [j], ch, number_of_states))
+                        if x[0] != y[0]:
+                            s.append(T[max(x[0], y[0])][min(x[0], y[0])])
+                    if False in s:
+                        T[i][j] = False
+                        new = 1
+
+    #Pasul numarul 2: Gruparea starilor echivalente
+
+    eq = []
+    for i in range(1, number_of_states):
+        for j in range(i):
+            if T[i][j] == True:
+                for x in eq:
+                    if j in x:
+                        x.add(i)
+                        break
+                else:
+                    eq.append({j, i})
+    for i in range(number_of_states):
+        for x in eq:
+            if i in x:
+                break
+        else:
+            eq.append({i})
+    for i in range(len(eq)):
+        for j in range(i + 1, len(eq)):
+            if list(eq[i])[0] > list(eq[j])[0]:
+                eq[i], eq[j] = eq[j], eq[i]
+
+    #1.2 PASUL 2: Tranzitiile vor fi aceleasi cu cele ale automatului initial
+    #Dar se va tine cont de grupari!
+    #Formez o lista de tranzitii
+    L = []
+    for i in range(len(eq)):
+        for ch in c:
+            x = multime_tr_caract(M, eq[i], ch, number_of_states)
+            for y in eq:
+                if list(x)[0] in y:
+                    L.append((i, ch, eq.index(y)))
+
+    #Se actualizeaza starile initiale
+    for x in eq:
+        for y in x:
+            if y == init:
+                init = eq.index(x)
+
+    #Se actualizeaza si starile finale
+    newfin = []
+    for x in eq:
+        if list(x)[0] in fin:
+            newfin.append(eq.index(x))
+    fin = copy.deepcopy(newfin)
+    nrfin = len(fin)
+
+    #In urma actualizarilor, s a modificat numarul starilor
+    #Astfel ca trebuie sa actualizez si numarul de stari
+    number_of_states = len(eq)
+
+    #Construiesc matricea de adiacenta pentru automat
+    Matrice_adiacenta = [[0] * number_of_states for i in range(number_of_states)]
+    for x in L:
+        if x[0] != x[2]:
+            Matrice_adiacenta[x[0]][x[2]] = 1
+
+    #Cu ajurotul unui vector de vizitari aflu pentru fiecare stare, unde pot ajunge daca plec din ea
+    vectorviz = []
+    for s in range(number_of_states):
+        viz = [0] * number_of_states
+        q = []
+        q.append(s)
+        viz[s] = 1
+        while len(q) != 0:
+            i = q[0]
+            q.pop(0)
+            for j in range(number_of_states):
+                if Matrice_adiacenta[i][j]:
+                    if viz[j] == 0:
+                        q.append(j)
+                        viz[j] = 1
+        vectorviz.append(viz)
+
+    #O stare este dead-end daca din ea nu se poate ajunge intr o stare finala
+    #In acest punct ma intereseaza sa aflu care sunt aceste stari dead-end
+    elim = []
+    for x in vectorviz:
+        for i in fin:
+            if x[i] == 1:
+                break
+        else:
+            elim.append(vectorviz.index(x))
+
+    #Plecand dintr o stare initiala, ma intereseaza in ce stare pot ajunge
+    s = init
+    viz = [0] * number_of_states
+    q = []
+    q.append(s)
+    viz[s] = 1
+    while len(q) != 0:
+        i = q[0]
+        q.pop(0)
+        for j in range(number_of_states):
+            if Matrice_adiacenta[i][j]:
+                if viz[j] == 0:
+                    q.append(j)
+                    viz[j] = 1
+
+    #in lista elim adaug starile care nu sunt accesibile
+    for i in viz:
+        if i == 0 and i not in elim:
+            elim.append(viz.index(i))
+
+
+    #Pasul 4: Eliminarea dead-end-urilor si toate tranzitiile catre si din spre ele
+    if len(elim) != 0:
+        for x in elim:
+            y = 0
+            while y < len(L):
+                if L[y][0] == x or L[y][2] == x:
+                    L.pop(y)
+                else:
+                    y = y + 1
+
+        #Ajung iar in situatia in care o sa am un numar nou de stari
+        #Asa ca trebuie numerotez iar de la 0 la cate stari am acum
+        i = 0
+        j = 0
+        g = 0
+        while i < number_of_states:
+            if i in elim:
+                j = j + 1
+                g = 1
+            if g == 1 and i not in elim:
+                for x in L:
+                    if x[0] == i:
+                        x[0] = i - j
+                    if x[2] == i:
+                        x[2] = i - j
+                if i in fin:
+                    fin.remove(i)
+                    fin.append(i - j)
+            i = i + 1
+        number_of_states = number_of_states - len(elim)
+
+    return number_of_states, number_of_chars, c, init, nrfin, fin, L
+
+
+
+def afis(A):
+    print("Numarul de stari este:", A[0])
+    print("In alfabet sunt", A[1], "litere")
+    print("Alfabetul:", A[2])
+    print("Starea initiala:", A[3])
+    print("Sunt", A[4], "stari finale")
+    print("Multimea de stari finale este", A[5])
+    print("Tranzitiile:")
+    for x in A[6]:
+        print(x)
+    print()
+
+f = open("datetema2.in" , "r")
+A = Read()
+B = Read()
+C = Read()
+print("CONVERSIE LAMBDA-NFA LA NFA")
+A = lnfa_to_nfa(A)
+afis(A)
+
+print("CONVERSIE NFA LA DFA")
+B = nfa_to_dfa(B)
+afis(B)
+
+print("CONVERSIE DFA LA DFA MIN")
+C = dfa_to_dfamin(C)
+afis(C)
+f.close()

@@ -439,7 +439,7 @@ def afisare(A):
         print(x)
     print()
 
-f = open("datetema2.in" , "r")
+f = open("tema2.in" , "r")
 A = Read()
 B = Read()
 C = Read()

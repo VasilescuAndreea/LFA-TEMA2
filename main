@@ -1,3 +1,4 @@
+f = open("tema2.in" , "r")
 
 #Citirea datelor
 def Read():
@@ -439,7 +440,6 @@ def afisare(A):
         print(x)
     print()
 
-f = open("tema2.in" , "r")
 A = Read()
 B = Read()
 C = Read()
